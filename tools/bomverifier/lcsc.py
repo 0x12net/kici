@@ -52,11 +52,19 @@ class LCSC(BaseProvider):
     def _get_price(self, price):
         if not price:
             return None
-        for tier in json.loads(price):
-            q_to = tier.get('qTo')
-            if tier['qFrom'] <= self.qt and (q_to is None or self.qt <= q_to):
-                return float(tier['price'])
-        return None
+        tiers = json.loads(price)
+        if not tiers:
+            return None
+        # Pick the highest-quantity break whose qFrom is still <= qty_total.
+        selected = None
+        for tier in sorted(tiers, key=lambda t: t['qFrom']):
+            if tier['qFrom'] <= self.qt:
+                selected = tier
+        # qty_total is below the smallest break (LCSC MOQ): fall back to that
+        # break so a price is still reported instead of an empty cell.
+        if selected is None:
+            selected = min(tiers, key=lambda t: t['qFrom'])
+        return float(selected['price'])
 
     def _get_search_by(self, search_type):
         search_by = None

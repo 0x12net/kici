@@ -34,31 +34,6 @@ I do not guarantee the functionality and backward compatibility of the pipeline.
 
 - ISSUE_TEMPLATE
 
-## Usage
-
-### Repository settings
-
-1. Settings -> Actions  -> General
-   
-   1. Actions permissions = Allow all actions and reusable workflows
-   
-   2. Approval for running fork pull request workflows from contributors = Require approval for all external contributors
-   
-   3. Workflow permissions =  Read and write permissions
-   
-   4. Allow GitHub Actions to create and approve pull requests = true
-
-2. Issues -> Labels -> New lable
-   
-   1. [command] (Run a command on a repository) {#C1C3E5}
-   
-   2. [order] (Order details) {#A86D25}
-
-3. Edit repository details -> Topics
-   
-   1. kicad? - Indicates the version of kicad (ex. `kicad10`)
-   
-   2. ki?ci? - pipeline version (ex. `ki9ci3`)
 
 ### Requirements:
 
@@ -86,14 +61,10 @@ I recommend specifying the exact version of the docker image in the pipeline.
 
 ## Changelog:
 
-### v10.0.2
-
-- add support digikey
-- fix bug
-
 ### v10.0.1
 
 - update kicad
+- add support digikey
 - del kicad-command
 
 ### v9.0.2

@@ -107,7 +107,7 @@ bom.csv
 
 ### digikey
 
-Используется официальная python-библиотека [peeter123/digikey-api](https://github.com/peeter123/digikey-api) (PartSearch API v3), а не прямой HTTP-запрос.
+Используется Product Information API **v4** с **2-legged OAuth (client credentials)** — прямыми HTTP-запросами через `requests`, без внешней библиотеки. Не требуется интерактивный вход и кэш токена, поэтому провайдер работает в headless CI.
 
 Требуемые переменные окружения:
 
@@ -115,22 +115,21 @@ bom.csv
 | ------------------------ | -------------------------------------------------------------------- |
 | `DIGIKEY_CLIENT_ID`      | Client ID приложения, зарегистрированного на developer.digikey.com   |
 | `DIGIKEY_CLIENT_SECRET`  | Client Secret того же приложения                                    |
-| `DIGIKEY_STORAGE_PATH`   | Каталог для кэша OAuth2-токенов (access/refresh)                    |
-| `DIGIKEY_CLIENT_SANDBOX` | `True`/`False` — использовать sandbox API вместо продакшн            |
+| `DIGIKEY_CLIENT_SANDBOX` | (опционально) `True` — использовать sandbox-хост вместо продакшн     |
 
-Заметка: при первом запуске библиотека открывает браузер для прохождения OAuth2-логина (Authorization Code flow), что невозможно в headless CI-контейнере. Поэтому `DIGIKEY_STORAGE_PATH` должен быть заранее заполнен валидным refresh-токеном, полученным один раз в интерактивном режиме вне пайплайна (например, локально), и передан в контейнер как персистентный volume/секрет. Без валидного кэша токена запуск с флагом `-digikey` в CI зависнет или упадёт с ошибкой авторизации.
+Заметка: токен получается запросом `grant_type=client_credentials` к `POST /v1/oauth2/token` и кэшируется в памяти на время запуска (переиспользуется для всех строк BOM, обновляется по `expires_in`). Никакого браузера, refresh-токена и `DIGIKEY_STORAGE_PATH` не нужно — достаточно `CLIENT_ID` + `CLIENT_SECRET`.
 
-Поиск по `mpn` выполняется через `keyword_search` (берётся первый результат), поиск по `sku` — через `product_details` по номеру Digi-Key.
+Поиск по `mpn` выполняется через `POST /products/v4/search/keyword` (берётся первый продукт), поиск по `sku` — через `GET /products/v4/search/{DigiKeyProductNumber}/productdetails`.
 
-Требуемые поля:
+Требуемые поля (v4):
 
-|                                                                |                     |
-| -------------------------------------------------------------- | ------------------- |
-| DigiKeyPartNumber                                               | digikey_sku         |
-| ManufacturerPartNumber                                          | digikey_mpn         |
-| QuantityAvailable                                               | digikey_stock       |
-| StandardPricing (тарифная сетка по qty_total)                   | digikey_price       |
-| истина если совпадают digikey/digikey_sku и mpn/digikey_mpn     | digikey_consistent  |
-| истина если qty_total <= digikey_stock                          | digikey_enough      |
+|                                                                        |                     |
+| ---------------------------------------------------------------------- | ------------------- |
+| `ProductVariations[].DigiKeyProductNumber`                             | digikey_sku         |
+| `ManufacturerProductNumber`                                            | digikey_mpn         |
+| `QuantityAvailable`                                                    | digikey_stock       |
+| `ProductVariations[].StandardPricing` (тариф `BreakQuantity` по qty_total) | digikey_price   |
+| истина если совпадают digikey/digikey_sku и mpn/digikey_mpn             | digikey_consistent  |
+| истина если qty_total <= digikey_stock                                 | digikey_enough      |
 
 # 
