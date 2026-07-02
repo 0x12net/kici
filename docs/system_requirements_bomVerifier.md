@@ -24,7 +24,7 @@
 
 - Программа должна быть не чувствительна к регистру заголовка столбцов
 
-- Требуется поддержка поставщиков lcsc, promelec, elitan
+- Требуется поддержка поставщиков lcsc, digikey
 
 - Предусмотреть возможность включения задержки между забросами к api (рас комментировать в коде) 
 
@@ -40,17 +40,25 @@
 pythone3 bomVerifier.py -o newBOM.csv \ # куда сохранить новый bom
 -lcsc=type \ # осуществляет процессинг для lcsc (строка)
 -lcscRW=type \ # принудительно перезаписать то что указано в type (строка)
--promelec \ # осуществляет процессинг для promelec
--elitan \ # осуществляет процессинг для elitan
+-digikey=type \ # осуществляет процессинг для digikey (строка)
+-digikeyRW=type \ # принудительно перезаписать то что указано в type (строка)
 -qty=num \ # количество изделий в заказу (число > 0) (по умолчанию)
 bom.csv
 ```
 
 - Все флаги кроме `-o` являются не обязательными.
 
-- Где `type` это `mpn` или `sku` или `none`. Параметр определяет по какому полю будет осуществятся поиск.  `promelec` и `elitan` всегда ищут по `mpn` или не ищут совсем.
+- Где `type` это `mpn` или `sku` или `none`.
 
-- Заблокировать ситуацию когда `lcsc` = `lcscRW` = `type`
+  - Для флага поиска (`-lcsc`, `-digikey`) `type` определяет по какому полю выполняется поиск.
+
+  - Для флага перезаписи (`-lcscRW`, `-digikeyRW`) `type` определяет какое поле перезаписать данными поставщика: `mpn` — столбец `mpn` найденным mpn; `sku` — столбец артикула поставщика (`lcsc`/`digikey`) найденным артикулом.
+
+- Заблокировать ситуацию когда `lcsc` = `lcscRW` = `type` (нельзя перезаписывать поле, по которому ищем)
+
+- Заблокировать ситуацию когда `digikey` = `digikeyRW` = `type`
+
+- Поставщики обрабатываются в порядке указания флагов в командной строке. Это позволяет по цепочке использовать данные, дописанные предыдущим поставщиком. Например `-lcsc=sku -lcscRW=mpn -digikey=mpn -digikeyRW=sku`: сначала lcsc ищет по артикулу и восстанавливает `mpn`, затем digikey ищет по этому `mpn` и заполняет свой артикул.
 
 - Флаг `-qty` создает столбец `qty_total` содержащие `qty`
 
@@ -58,10 +66,10 @@ bom.csv
 
 Структура входного файла:
 
-| Qty | mpn               | Designator | Value     | Coefficient | Voltage | Footprint                        | chipdip    | elitan     | lcsc   | promelec |
-| --- | ----------------- | ---------- | --------- | ----------- | ------- | -------------------------------- | ---------- | ---------- | ------ | -------- |
-| 2   | CC0805KRX7R9BB104 | C1,C6      | 100n      | X7R         | 50v     | 0805                             | 9000121574 |            | C49678 | 124545   |
-| 1   | STM32F103C8T6     | U3         | STM32F103 |             |         | Package_QFP:LQFP-48_7x7mm_P0.5mm |            | item399050 | C8734  | 126937   |
+| Qty | mpn               | Designator | Value     | Coefficient | Voltage | Footprint                        | chipdip    | lcsc   | digikey       |
+| --- | ----------------- | ---------- | --------- | ----------- | ------- | -------------------------------- | ---------- | ------ | ------------- |
+| 2   | CC0805KRX7R9BB104 | C1,C6      | 100n      | X7R         | 50v     | 0805                             | 9000121574 | C49678 |               |
+| 1   | STM32F103C8T6     | U3         | STM32F103 |             |         | Package_QFP:LQFP-48_7x7mm_P0.5mm |            | C8734  | 296-6501-1-ND |
 
 Структура выходного файла:
 
@@ -74,49 +82,9 @@ bom.csv
 | ... | 2         | С49678   | CC0805KRX7R9BB104 | 10035215   | 0.004385714 | true            | true        | --- |
 | ... | 1         | С8734    | STM32F103C8T6     | 133623     | 1.174285714 | true            | true        | --- |
 
+`---` в примере выше содержит столбцы digikey (аналогичной структуры): `digikey_sku, digikey_mpn, digikey_stock, digikey_price, digikey_consistent, digikey_enough`.
+
 ## External API
-
-### promelec
-
-```
-https://efind.ru/ajax/efapi/search?id=65,1794&stock=1&search=!!СЮДА MPN!!&tm=15&hp=1&cur=usd
-```
-
-Описание: https://efind.ru/services/api
-
-Тут можно потыкать: https://efind.ru/services/api/example
-
-Требуемые поля:
-
-|                                                               |                     |
-| ------------------------------------------------------------- | ------------------- |
-| sku                                                           | promelec_sku        |
-| part                                                          | promelec_mpn        |
-| stock                                                         | promelec_stock      |
-| price                                                         | promelec_price      |
-| истина если совпадают promelec/promelec_sku и mpn/promelec_mpn | promelec_consistent |
-| истина если qty_total <= promelec_stock                       | promelec_enough     |
-
-### elitan
-
-```
-https://efind.ru/ajax/efapi/search?id=172&stock=1&search=!!СЮДА MPN!!&tm=15
-```
-
-Заметка: elitan не дает информацию о цене и количестве, выдает бинарное значение ЕСТЬ/НЕТ. 
-
-Описание: https://efind.ru/services/api
-
-Тут можно потыкать: https://efind.ru/services/api/example
-
-Требуемые поля:
-
-|                                                         |                   |
-| ------------------------------------------------------- | ----------------- |
-| ![](design/2025-03-18-11-37-04-image.png)               | elitan_sku        |
-| part                                                    | elitan_mpn        |
-| истина если совпадают elitan/elitan_sku и mpn/elitan_mpn | elitan_consistent |
-| stock                                                   | elitan_enough     |
 
 ### lcsc
 
@@ -128,13 +96,41 @@ https://efind.ru/ajax/efapi/search?id=172&stock=1&search=!!СЮДА MPN!!&tm=15
 
 Требуемые поля:
 
-|                                                   |                 |
-| ------------------------------------------------- | --------------- |
-| lcsc                                              | lcsc_sku        |
-| mfr                                               | lcsc_mpn        |
-| stock                                             | lcsc_stock      |
-| price1                                            | lcsc_price      |
-| истина если совпадают lcsc/lcsc_sku и mpn/lcsc_mpn | lcsc_consistent |
-| истина если qty_total <= lcsc_stock               | lcsc_enough     |
+|                                                     |                 |
+| --------------------------------------------------- | --------------- |
+| lcsc                                                | lcsc_sku        |
+| mfr                                                 | lcsc_mpn        |
+| stock                                               | lcsc_stock      |
+| price (тарифная сетка по qty_total)                 | lcsc_price      |
+| истина если совпадают lcsc/lcsc_sku и mpn/lcsc_mpn   | lcsc_consistent |
+| истина если qty_total <= lcsc_stock                 | lcsc_enough     |
+
+### digikey
+
+Используется официальная python-библиотека [peeter123/digikey-api](https://github.com/peeter123/digikey-api) (PartSearch API v3), а не прямой HTTP-запрос.
+
+Требуемые переменные окружения:
+
+| Переменная              | Назначение                                                          |
+| ------------------------ | -------------------------------------------------------------------- |
+| `DIGIKEY_CLIENT_ID`      | Client ID приложения, зарегистрированного на developer.digikey.com   |
+| `DIGIKEY_CLIENT_SECRET`  | Client Secret того же приложения                                    |
+| `DIGIKEY_STORAGE_PATH`   | Каталог для кэша OAuth2-токенов (access/refresh)                    |
+| `DIGIKEY_CLIENT_SANDBOX` | `True`/`False` — использовать sandbox API вместо продакшн            |
+
+Заметка: при первом запуске библиотека открывает браузер для прохождения OAuth2-логина (Authorization Code flow), что невозможно в headless CI-контейнере. Поэтому `DIGIKEY_STORAGE_PATH` должен быть заранее заполнен валидным refresh-токеном, полученным один раз в интерактивном режиме вне пайплайна (например, локально), и передан в контейнер как персистентный volume/секрет. Без валидного кэша токена запуск с флагом `-digikey` в CI зависнет или упадёт с ошибкой авторизации.
+
+Поиск по `mpn` выполняется через `keyword_search` (берётся первый результат), поиск по `sku` — через `product_details` по номеру Digi-Key.
+
+Требуемые поля:
+
+|                                                                |                     |
+| -------------------------------------------------------------- | ------------------- |
+| DigiKeyPartNumber                                               | digikey_sku         |
+| ManufacturerPartNumber                                          | digikey_mpn         |
+| QuantityAvailable                                               | digikey_stock       |
+| StandardPricing (тарифная сетка по qty_total)                   | digikey_price       |
+| истина если совпадают digikey/digikey_sku и mpn/digikey_mpn     | digikey_consistent  |
+| истина если qty_total <= digikey_stock                          | digikey_enough      |
 
 # 

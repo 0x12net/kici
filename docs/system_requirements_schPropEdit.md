@@ -18,7 +18,7 @@ python schPropEdit.py "ФАЙЛ" \
 python schPropEdit.py file.kicad_sch \
     -s "lcsc" \
     -sv "C99772" \
-    -c "promelec" \
+    -c "chipdip" \
     -cv "000000"
 ```
 

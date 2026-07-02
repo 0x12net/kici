@@ -64,36 +64,37 @@ while getopts 'spdgcabil' OPTION; do
         						     --excellon-oval-format alternate -u mm --generate-map --map-format gerberx2 \
         						     --drill-origin plot
         cd ${OUTPUT_DIR}/gerber/
-        mv main-User_1.gbr 11_${NAME}_User-1.gbr
-        mv main-User_2.gbr 12_${NAME}_User-2.gbr
-        mv main-User_3.gbr 13_${NAME}_User-3.gbr
-        mv main-User_4.gbr 14_${NAME}_User-4.gbr
-        mv main-User_5.gbr 15_${NAME}_User-5.gbr
-        mv main-F_Paste.gbr 20_${NAME}_F-Paste.gbr
-        mv main-F_Silkscreen.gbr 21_${NAME}_F-Silkscreen.gbr
-        mv main-F_Mask.gbr 22_${NAME}_F-Mask.gbr
-        mv main-F_Cu.gbr 25_${NAME}_F-Cu.gbr
-        mv main-In1_Cu.gbr 26_${NAME}_In1-Cu.gbr
-        mv main-In2_Cu.gbr 27_${NAME}_In2-Cu.gbr
-        mv main-In3_Cu.gbr 28_${NAME}_In3-Cu.gbr
-        mv main-In4_Cu.gbr 29_${NAME}_In4-Cu.gbr
-        mv main-In5_Cu.gbr 30_${NAME}_In5-Cu.gbr
-        mv main-In6_Cu.gbr 31_${NAME}_In6-Cu.gbr
-        mv main-B_Cu.gbr 56_${NAME}_B-Cu.gbr
-        mv main-B_Mask.gbr 60_${NAME}_B-Mask.gbr
-        mv main-B_Silkscreen.gbr 61_${NAME}_B-Silkscreen.gbr
-        mv main-B_Paste.gbr 62_${NAME}_B-Paste.gbr
-        mv main-Edge_Cuts.gbr 95_${NAME}_Edge-Cuts.gbr
-        mv main-User_6.gbr 96_${NAME}_User-6.gbr
-        mv main-User_7.gbr 97_${NAME}_User-7.gbr
-        mv main-User_8.gbr 98_${NAME}_User-8.gbr
-        mv main-User_9.gbr 99_${NAME}_User-9.gbr
-        mv main-User_Comments.gbr ${NAME}_User-Comments.gbr
-        mv main-User_Drawings.gbr ${NAME}_User-Drawings.gbr
+        mvopt() { [ -f "$1" ] && mv "$1" "$2"; }
+        mvopt main-User_1.gbr 11_${NAME}_User-1.gbr
+        mvopt main-User_2.gbr 12_${NAME}_User-2.gbr
+        mvopt main-User_3.gbr 13_${NAME}_User-3.gbr
+        mvopt main-User_4.gbr 14_${NAME}_User-4.gbr
+        mvopt main-User_5.gbr 15_${NAME}_User-5.gbr
+        mvopt main-F_Paste.gbr 20_${NAME}_F-Paste.gbr
+        mvopt main-F_Silkscreen.gbr 21_${NAME}_F-Silkscreen.gbr
+        mvopt main-F_Mask.gbr 22_${NAME}_F-Mask.gbr
+        mvopt main-F_Cu.gbr 25_${NAME}_F-Cu.gbr
+        mvopt main-In1_Cu.gbr 26_${NAME}_In1-Cu.gbr
+        mvopt main-In2_Cu.gbr 27_${NAME}_In2-Cu.gbr
+        mvopt main-In3_Cu.gbr 28_${NAME}_In3-Cu.gbr
+        mvopt main-In4_Cu.gbr 29_${NAME}_In4-Cu.gbr
+        mvopt main-In5_Cu.gbr 30_${NAME}_In5-Cu.gbr
+        mvopt main-In6_Cu.gbr 31_${NAME}_In6-Cu.gbr
+        mvopt main-B_Cu.gbr 56_${NAME}_B-Cu.gbr
+        mvopt main-B_Mask.gbr 60_${NAME}_B-Mask.gbr
+        mvopt main-B_Silkscreen.gbr 61_${NAME}_B-Silkscreen.gbr
+        mvopt main-B_Paste.gbr 62_${NAME}_B-Paste.gbr
+        mvopt main-Edge_Cuts.gbr 95_${NAME}_Edge-Cuts.gbr
+        mvopt main-User_6.gbr 96_${NAME}_User-6.gbr
+        mvopt main-User_7.gbr 97_${NAME}_User-7.gbr
+        mvopt main-User_8.gbr 98_${NAME}_User-8.gbr
+        mvopt main-User_9.gbr 99_${NAME}_User-9.gbr
+        mvopt main-User_Comments.gbr ${NAME}_User-Comments.gbr
+        mvopt main-User_Drawings.gbr ${NAME}_User-Drawings.gbr
         mv main.drl ${NAME}.drl
         mv main-drl_map.gbr ${NAME}_drl-map.gbr
         mv main-job.gbrjob ${NAME}_job.gbrjob
-        rm main-*.gbr
+        rm -f main-*.gbr
         
         zip -r ${OUTPUT_DIR}/${NAME}.zip *
         rm -f *job.gbrjob *drl-map.gbr *User-Comments.gbr *User-Drawings.gbr
@@ -167,8 +168,13 @@ while getopts 'spdgcabil' OPTION; do
         echo "------------------- Legend [PDF] ---------------- "
         kicad-cli pcb export pdf ${TARGET_DIR}/${KIPRJ_NAME}.kicad_pcb -o ${OUTPUT_DIR}/${NAME}_legend \
         						 -l 'User.Comments,User.Drawings,User.1,User.2,User.3,User.4,User.5,User.6,User.7,User.8,User.9' --cl 'Edge.Cuts' --ibt --drill-shape-opt 0 --mode-multipage
-        mv ${OUTPUT_DIR}/${NAME}_legend/${KIPRJ_NAME}.pdf ${OUTPUT_DIR}/${NAME}_legend.pdf
-        rmdir ${OUTPUT_DIR}/${NAME}_legend
+        if [ -d ${OUTPUT_DIR}/${NAME}_legend ]; then
+          mv ${OUTPUT_DIR}/${NAME}_legend/${KIPRJ_NAME}.pdf ${OUTPUT_DIR}/${NAME}_legend.pdf
+          rmdir ${OUTPUT_DIR}/${NAME}_legend
+        else
+          # kicad-cli writes a single file directly (no subdirectory) when only one page is produced
+          mv ${OUTPUT_DIR}/${NAME}_legend ${OUTPUT_DIR}/${NAME}_legend.pdf
+        fi
         ;;
       ?)
         echo "script usage: $(basename \$0) -n=NAME -v=VER -k=dirPrj -o=OUT [-s][-p][-d][-g][-c][-a][-b][-i][-l]" >&2

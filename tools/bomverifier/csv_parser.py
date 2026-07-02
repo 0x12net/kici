@@ -1,9 +1,8 @@
 import csv
 from collections import OrderedDict
 
-from bomverifier.elitan import Elitan
-from bomverifier.promelec import Promelec
 from bomverifier.lcsc import LCSC
+from bomverifier.digikey import DigiKey
 from bomverifier.api import ApiClient
 
 
@@ -20,9 +19,8 @@ class ApiException(Exception):
 
 
 PROVIDER_CLASSES = {
-    'promelec': Promelec,
-    'elitan': Elitan,
-    'lcsc': LCSC
+    'lcsc': LCSC,
+    'digikey': DigiKey
 }
 
 
@@ -39,7 +37,7 @@ def read_csv_rows(filename):
 
 def update_row_with_providers(row, qty, providers, row_number):
     
-    # print(f'Строка {row_number}, чтение')
+    # print(f'Row {row_number}, reading')
     try:
         qty_total = qty * int(row['qty'])
     except ValueError:
@@ -69,12 +67,12 @@ def update_row_with_providers(row, qty, providers, row_number):
 
 def write_rows(output_file, rows):
 
-    # print('Запись строк')
+    # print('Writing rows')
     with open(output_file, 'w', newline='', encoding='utf-8') as csvfile:
         if rows:
             writer = csv.DictWriter(csvfile, rows[0].keys(), delimiter=',', dialect=csv.unix_dialect)
             writer.writeheader()
-            # print('Запись в файл')
+            # print('Writing to file')
             for row in rows:
                 writer.writerow(row)
             print(f'INFO: Number of lines written: {len(rows)}')

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# BOMVERIFIERARG="-qty=1 -lcsc=sku -lcscRW=mpn -promelec -elitan" PREVCOLUMN="qty,mpn,lcsc,lcsc_sku,lcsc_consistent,lcsc_stock,promelec_consistent,promelec_stock,elitan_consistent,elitan_enough" ./kicadStock.sh schPropEdit
+# BOMVERIFIERARG="-qty=1 -lcsc=sku -lcscRW=mpn" PREVCOLUMN="qty,mpn,lcsc,lcsc_sku,lcsc_consistent,lcsc_stock" ./kicadStock.sh schPropEdit
 
 PRJ_VERSION=${PRJ_VERSION:-"v0.0.0-def"}
 PRJ_REPO=${PRJ_REPO:-"repo"}

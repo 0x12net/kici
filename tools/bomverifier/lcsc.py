@@ -1,13 +1,15 @@
+import json
 from typing import OrderedDict
 
 from bomverifier.api import ApiClient
-from bomverifier.exceptions import MissingDataException, ArgsException
+from bomverifier.exceptions import MissingDataException
 from bomverifier.base import BaseProvider
 
 
 class LCSC(BaseProvider):
     params = {}
     url = 'https://jlcsearch.tscircuit.com/components/list.json'
+    sku_column = 'lcsc'
 
 
     def __init__(self, api_client: ApiClient, item: OrderedDict, qt: int, search_type='mpn', **kwargs) -> None:
@@ -16,7 +18,7 @@ class LCSC(BaseProvider):
         self.item = item
         self.search_type = search_type
 
-        self.rewrite_column = kwargs.get('rewrite_column')
+        self.rewrite = kwargs.get('rewrite_field')
 
     @property
     def required_keys(self):
@@ -42,23 +44,19 @@ class LCSC(BaseProvider):
 
             data = [sku, mpn, stock, price, consistent, enough]
             self._update(data)
+            self._rewrite(sku, mpn)
 
         else:
             self.fill_with_empty_values()
 
-        if self.rewrite_column and rows:
-            try:
-                self.item[self.rewrite_column]
-            except KeyError:
-                raise ArgsException('No column to rewrite')
-            self.item[self.rewrite_column] = row['mfr']
-    
     def _get_price(self, price):
-        if price == 'да':
-            return True
-        elif price == 'нет':
-            return False
-        return price
+        if not price:
+            return None
+        for tier in json.loads(price):
+            q_to = tier.get('qTo')
+            if tier['qFrom'] <= self.qt and (q_to is None or self.qt <= q_to):
+                return float(tier['price'])
+        return None
 
     def _get_search_by(self, search_type):
         search_by = None

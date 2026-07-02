@@ -4,12 +4,6 @@ The repository contains the source code of the docker image. Designed to automat
 
 I do not guarantee the functionality and backward compatibility of the pipeline. I support it for my processes.
 
-Examples of usage can be found in repository [kici-example](https://github.com/MuratovAS/kici-example).
-
-A detailed description of my interaction processes can be found [here](https://github.com/Artel-Inc/faq)
-
-I work with two platforms `github`, `gitea`
-
 ## Features
 
 - `kicad-release` - System for generating production documentation
@@ -34,9 +28,7 @@ I work with two platforms `github`, `gitea`
   
   - lcsc
   
-  - promelec
-  
-  - elitan
+  - digikey
   
   - Automatic `mpn` detection function by `sku` lcsc
 
@@ -93,6 +85,16 @@ Where:
 I recommend specifying the exact version of the docker image in the pipeline.
 
 ## Changelog:
+
+### v10.0.2
+
+- add support digikey
+- fix bug
+
+### v10.0.1
+
+- update kicad
+- del kicad-command
 
 ### v9.0.2
 
