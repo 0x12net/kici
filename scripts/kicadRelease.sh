@@ -189,7 +189,7 @@ while getopts 'spdgcabil' OPTION; do
         ## Legend
         echo "------------------- Legend [PDF] ---------------- "
         kicad-cli pcb export pdf ${TARGET_DIR}/${KIPRJ_NAME}.kicad_pcb -o ${OUTPUT_DIR}/${NAME}_legend \
-        						 -l 'User.Comments,User.Drawings,User.1,User.2,User.3,User.4,User.5,User.6,User.7,User.8,User.9' --cl 'Edge.Cuts' --ibt --drill-shape-opt 0 --mode-multipage
+        						 -l 'User.Comments,User.Drawings,User.1,User.2,User.3,User.4,User.5,User.6,User.7,User.8,User.9' --cl 'Edge.Cuts' --ibt --drill-shape-opt 0 --mode-multipage --theme 'KiCad Classic'
         if [ -d ${OUTPUT_DIR}/${NAME}_legend ]; then
           mv ${OUTPUT_DIR}/${NAME}_legend/${KIPRJ_NAME}.pdf ${OUTPUT_DIR}/${NAME}_legend.pdf
           rmdir ${OUTPUT_DIR}/${NAME}_legend
