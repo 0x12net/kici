@@ -45,9 +45,17 @@ while getopts 'spdgcabil' OPTION; do
         ## PCB
         echo "------------------- PCB [PDF] ------------------- "
         kicad-cli pcb export pdf ${TARGET_DIR}/${KIPRJ_NAME}.kicad_pcb \
-        						 -l 'F.Paste,F.Cu,F.Silkscreen,F.Courtyard,Edge.Cuts' --ibt --ev --drill-shape-opt 2 -o ${OUTPUT_DIR}/${NAME}_pcb_t.pdf 
+        						 -l 'F.Paste,F.Cu,F.Silkscreen,F.Courtyard,Edge.Cuts' --ibt --ev --drill-shape-opt 2 --bg-color '#000000' -o ${OUTPUT_DIR}/${NAME}_pcb_t.pdf
         kicad-cli pcb export pdf ${TARGET_DIR}/${KIPRJ_NAME}.kicad_pcb \
-        						 -l 'B.Paste,B.Cu,B.Silkscreen,B.Courtyard,Edge.Cuts' -m --ibt --ev --drill-shape-opt 2 -o ${OUTPUT_DIR}/${NAME}_pcb_b.pdf 
+        						 -l 'B.Paste,B.Cu,B.Silkscreen,B.Courtyard,Edge.Cuts' --ibt --ev --drill-shape-opt 2 --bg-color '#000000' -o ${OUTPUT_DIR}/${NAME}_pcb_b.pdf
+        kicad-cli pcb export pdf ${TARGET_DIR}/${KIPRJ_NAME}.kicad_pcb \
+        						 -l 'In1.Cu,In2.Cu,In3.Cu,In4.Cu,In5.Cu,In6.Cu' --cl 'Edge.Cuts' --ibt --ev --drill-shape-opt 2 --mode-multipage --bg-color '#000000' -o ${OUTPUT_DIR}/${NAME}_pcb_layers.pdf
+        # boards with no inner layers produce no _pcb_layers.pdf at all
+        LAYERS_PDF=""
+        [ -f "${OUTPUT_DIR}/${NAME}_pcb_layers.pdf" ] && LAYERS_PDF="${OUTPUT_DIR}/${NAME}_pcb_layers.pdf"
+        gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -sOutputFile=${OUTPUT_DIR}/${NAME}_pcb.pdf \
+        	${OUTPUT_DIR}/${NAME}_pcb_t.pdf ${LAYERS_PDF} ${OUTPUT_DIR}/${NAME}_pcb_b.pdf
+        rm -f ${OUTPUT_DIR}/${NAME}_pcb_t.pdf ${OUTPUT_DIR}/${NAME}_pcb_b.pdf ${OUTPUT_DIR}/${NAME}_pcb_layers.pdf
         ;;
       d)
         ## 3D
@@ -147,6 +155,9 @@ while getopts 'spdgcabil' OPTION; do
         						 -l 'F.Fab,Edge.Cuts' --cl 'User.Drawings' --cdnp --ev --ibt --black-and-white --drill-shape-opt 0
         kicad-cli pcb export pdf ${TARGET_DIR}/${KIPRJ_NAME}.kicad_pcb -o ${OUTPUT_DIR}/${NAME}_asm_b.pdf \
         						 -l 'B.Fab,Edge.Cuts' --cl 'User.Drawings' --cdnp --ev --ibt --black-and-white --drill-shape-opt 0 -m
+        gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -sOutputFile=${OUTPUT_DIR}/${NAME}_asm.pdf \
+        	${OUTPUT_DIR}/${NAME}_asm_t.pdf ${OUTPUT_DIR}/${NAME}_asm_b.pdf
+        rm -f ${OUTPUT_DIR}/${NAME}_asm_t.pdf ${OUTPUT_DIR}/${NAME}_asm_b.pdf
         ;;
       b)
         ## BOM
