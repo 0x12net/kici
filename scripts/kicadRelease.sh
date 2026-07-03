@@ -1,6 +1,10 @@
 #!/bin/sh
 
-#PRJ_VERSION=v0.0.0 PRJ_REPO=test ./kicadRelease.sh -s -p -g -c -a -b -i -l
+# Production files generator.
+# Usage: PRJ_VERSION=v0.0.0 PRJ_REPO=test ./kicadRelease.sh -s -p -g -c -a -b -i -l
+#   -s sch pdf   -p pcb pdf   -d step      -g gerber+drill  -c cpl csv
+#   -a asm pdf   -b bom csv   -i interactive bom            -l legend pdf
+# Optional env: CORRECTIONCPLURL - url of a global cpl correction table (jlc)
 
 PRJ_VERSION=${PRJ_VERSION:-"v0.0.0-def"}
 PRJ_REPO=${PRJ_REPO:-"repo"}
@@ -8,8 +12,6 @@ KIPRJ_DIR_ARRAY=${KIPRJ_DIR_ARRAY:-"hardware*"}
 
 KIPRJ_NAME=${KIPRJ_NAME:-"main"}
 OUTPUT_DIR=${OUTPUT_DIR:-"build"}
-
-# CORRECTIONCPLURL=""
 
 mkdir -p $OUTPUT_DIR
 OUTPUT_DIR=`realpath $OUTPUT_DIR`
@@ -64,37 +66,38 @@ while getopts 'spdgcabil' OPTION; do
         						     --excellon-oval-format alternate -u mm --generate-map --map-format gerberx2 \
         						     --drill-origin plot
         cd ${OUTPUT_DIR}/gerber/
-        mvopt() { [ -f "$1" ] && mv "$1" "$2"; }
-        mvopt main-User_1.gbr 11_${NAME}_User-1.gbr
-        mvopt main-User_2.gbr 12_${NAME}_User-2.gbr
-        mvopt main-User_3.gbr 13_${NAME}_User-3.gbr
-        mvopt main-User_4.gbr 14_${NAME}_User-4.gbr
-        mvopt main-User_5.gbr 15_${NAME}_User-5.gbr
-        mvopt main-F_Paste.gbr 20_${NAME}_F-Paste.gbr
-        mvopt main-F_Silkscreen.gbr 21_${NAME}_F-Silkscreen.gbr
-        mvopt main-F_Mask.gbr 22_${NAME}_F-Mask.gbr
-        mvopt main-F_Cu.gbr 25_${NAME}_F-Cu.gbr
-        mvopt main-In1_Cu.gbr 26_${NAME}_In1-Cu.gbr
-        mvopt main-In2_Cu.gbr 27_${NAME}_In2-Cu.gbr
-        mvopt main-In3_Cu.gbr 28_${NAME}_In3-Cu.gbr
-        mvopt main-In4_Cu.gbr 29_${NAME}_In4-Cu.gbr
-        mvopt main-In5_Cu.gbr 30_${NAME}_In5-Cu.gbr
-        mvopt main-In6_Cu.gbr 31_${NAME}_In6-Cu.gbr
-        mvopt main-B_Cu.gbr 56_${NAME}_B-Cu.gbr
-        mvopt main-B_Mask.gbr 60_${NAME}_B-Mask.gbr
-        mvopt main-B_Silkscreen.gbr 61_${NAME}_B-Silkscreen.gbr
-        mvopt main-B_Paste.gbr 62_${NAME}_B-Paste.gbr
-        mvopt main-Edge_Cuts.gbr 95_${NAME}_Edge-Cuts.gbr
-        mvopt main-User_6.gbr 96_${NAME}_User-6.gbr
-        mvopt main-User_7.gbr 97_${NAME}_User-7.gbr
-        mvopt main-User_8.gbr 98_${NAME}_User-8.gbr
-        mvopt main-User_9.gbr 99_${NAME}_User-9.gbr
-        mvopt main-User_Comments.gbr ${NAME}_User-Comments.gbr
-        mvopt main-User_Drawings.gbr ${NAME}_User-Drawings.gbr
-        mv main.drl ${NAME}.drl
-        mv main-drl_map.gbr ${NAME}_drl-map.gbr
-        mv main-job.gbrjob ${NAME}_job.gbrjob
-        rm -f main-*.gbr
+        # rename ${KIPRJ_NAME}-<Layer>.gbr to [<NN>_]${NAME}_<Layer>.gbr (NN keeps fab stack order)
+        mvopt() { [ -f "${KIPRJ_NAME}-$1.gbr" ] && mv "${KIPRJ_NAME}-$1.gbr" "${2:+${2}_}${NAME}_$(echo "$1" | tr '_' '-').gbr"; }
+        mvopt User_1 11
+        mvopt User_2 12
+        mvopt User_3 13
+        mvopt User_4 14
+        mvopt User_5 15
+        mvopt F_Paste 20
+        mvopt F_Silkscreen 21
+        mvopt F_Mask 22
+        mvopt F_Cu 25
+        mvopt In1_Cu 26
+        mvopt In2_Cu 27
+        mvopt In3_Cu 28
+        mvopt In4_Cu 29
+        mvopt In5_Cu 30
+        mvopt In6_Cu 31
+        mvopt B_Cu 56
+        mvopt B_Mask 60
+        mvopt B_Silkscreen 61
+        mvopt B_Paste 62
+        mvopt Edge_Cuts 95
+        mvopt User_6 96
+        mvopt User_7 97
+        mvopt User_8 98
+        mvopt User_9 99
+        mvopt User_Comments
+        mvopt User_Drawings
+        mv ${KIPRJ_NAME}.drl ${NAME}.drl
+        mv ${KIPRJ_NAME}-drl_map.gbr ${NAME}_drl-map.gbr
+        mv ${KIPRJ_NAME}-job.gbrjob ${NAME}_job.gbrjob
+        rm -f ${KIPRJ_NAME}-*.gbr
         
         zip -r ${OUTPUT_DIR}/${NAME}.zip *
         rm -f *job.gbrjob *drl-map.gbr *User-Comments.gbr *User-Drawings.gbr
@@ -177,7 +180,7 @@ while getopts 'spdgcabil' OPTION; do
         fi
         ;;
       ?)
-        echo "script usage: $(basename \$0) -n=NAME -v=VER -k=dirPrj -o=OUT [-s][-p][-d][-g][-c][-a][-b][-i][-l]" >&2
+        echo "script usage: [PRJ_VERSION=vV.V.V-VVV] [PRJ_REPO=repo] [KIPRJ_DIR_ARRAY='hardware*'] [KIPRJ_NAME=main] [OUTPUT_DIR=build] $(basename $0) [-s][-p][-d][-g][-c][-a][-b][-i][-l]" >&2
         exit 1
         ;;
     esac

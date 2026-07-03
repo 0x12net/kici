@@ -2,9 +2,8 @@ FROM ghcr.io/kicad/kicad:10.0
 
 # Install all the tools, dependencies are already installed
 ADD dl_deb.py /usr/bin/
-RUN sudo apt-get update  && \
-	sudo apt install -y bsdmainutils wget zip && \
-	sudo apt install -y python3-requests python3-socks python3-pyparsing && \
+RUN sudo apt-get update && \
+	sudo apt-get install -y bsdmainutils wget zip python3-requests python3-socks python3-pyparsing && \
 	sudo python3 /usr/bin/dl_deb.py INTI-CMNB/InteractiveHtmlBom && \
 	sudo dpkg --ignore-depends kicad -i interactivehtmlbom*.deb && \
 	sudo rm /*.deb  && \

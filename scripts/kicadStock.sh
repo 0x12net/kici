@@ -1,6 +1,7 @@
 #!/bin/bash
 
-# BOMVERIFIERARG="-qty=1 -lcsc=sku -lcscRW=mpn" PREVCOLUMN="qty,mpn,lcsc,lcsc_sku,lcsc_consistent,lcsc_stock" ./kicadStock.sh schPropEdit
+# BOMVERIFIERARG="-qty=1 -lcsc=sku -lcscRW=mpn -digikey=mpn -digikeyRW=sku" PREVCOLUMN="qty,mpn,lcsc,lcsc_sku,lcsc_consistent,lcsc_stock" ./kicadStock.sh
+# schematics are edited only when BOMVERIFIERARG contains rewrite (-*RW=) flags
 
 PRJ_VERSION=${PRJ_VERSION:-"v0.0.0-def"}
 PRJ_REPO=${PRJ_REPO:-"repo"}
@@ -11,6 +12,19 @@ OUTPUT_DIR=${OUTPUT_DIR:-"build"}
 
 BOMVERIFIERARG=${BOMVERIFIERARG:-"-lcsc=sku -lcscRW=mpn"}
 PREVCOLUMN=${PREVCOLUMN:-"qty,mpn,lcsc,lcsc_sku,lcsc_consistent,lcsc_stock"}
+
+# search:change property pairs written back to schematics via schPropEdit.
+# Derived from the BOMVERIFIERARG rewrite flags unless set explicitly:
+# -<provider>RW=mpn searches symbols by the <provider> property and rewrites mpn,
+# -<provider>RW=sku searches symbols by mpn and rewrites the <provider> property
+if [ -z "$SCHPROPEDIT_PAIRS" ]; then
+  for ARG in $BOMVERIFIERARG; do
+    case "$ARG" in
+      -*RW=mpn) PROVIDER=${ARG#-}; SCHPROPEDIT_PAIRS="${SCHPROPEDIT_PAIRS} ${PROVIDER%RW=*}:mpn";;
+      -*RW=sku) PROVIDER=${ARG#-}; SCHPROPEDIT_PAIRS="${SCHPROPEDIT_PAIRS} mpn:${PROVIDER%RW=*}";;
+    esac
+  done
+fi
 
 # USERAGENTURL=
 
@@ -47,30 +61,13 @@ for KIPRJ_DIR in $KIPRJ_DIR_ARRAY; do
     | sed "s/True/✅  /g" | sed "s/False/❌   /g";
   fi
 
-  if [[ "$1" != "schPropEdit" ]]; then
-     continue;
-  fi
-
-  # build a single replacement table (search_name,search_value,change_name,change_value)
-  # so schPropEdit.py can apply every mpn:lcsc pair in one pass over each schematic file
-  REPLACEMENTS_CSV=${OUTPUT_DIR}/${NAME}_replacements.csv
-  echo "search_name,search_value,change_name,change_value" > ${REPLACEMENTS_CSV}
-  python3 /tools/csvExtractor.py ${OUTPUT_DIR}/${NAME}_bom_stock.csv "lcsc,mpn" | sed "s/,/ /g" | while read line || [[ -n $line ]];
-  do
-    set -- $line;
-    SEARCH_VALUE=`echo $1 | sed 's/^"//' | sed 's/"$//'`
-    CHANGE_VALUE=`echo $2 | sed 's/^"//' | sed 's/"$//'`
-
-    if [[ ! -n "$SEARCH_VALUE" || ! -n "$CHANGE_VALUE" || "$SEARCH_VALUE" = "lcsc" ]]; then
-       # echo "skip row"
-       continue;
-    fi
-
-    echo "lcsc,${SEARCH_VALUE},mpn,${CHANGE_VALUE}" >> ${REPLACEMENTS_CSV}
-  done
-
+  # for each SEARCH:CHANGE pair, symbols matched by property SEARCH get property CHANGE
+  # set to the value from the same bom_stock csv row (columns are read by name)
   for SCH_FILE in ${TARGET_DIR}/*.kicad_sch; do
-    echo "schPropEdit - apply $((`wc -l < ${REPLACEMENTS_CSV}` - 1)) replacements from ${REPLACEMENTS_CSV} in $SCH_FILE"
-    python3 /tools/schPropEdit.py ${SCH_FILE} --csv ${REPLACEMENTS_CSV}
+    for PAIR in $SCHPROPEDIT_PAIRS; do
+      echo "schPropEdit - map ${PAIR%%:*} -> ${PAIR##*:} from ${NAME}_bom_stock.csv in $SCH_FILE"
+      python3 /tools/schPropEdit.py ${SCH_FILE} --csv ${OUTPUT_DIR}/${NAME}_bom_stock.csv \
+                                    --search_name "${PAIR%%:*}" --change_name "${PAIR##*:}"
+    done
   done
 done

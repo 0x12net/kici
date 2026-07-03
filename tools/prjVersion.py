@@ -1,28 +1,24 @@
-# GITHUB_REF_NAME=v0.0.0
-# os.environ.get('GITHUB_REF_NAME')
-
-import os
-import sys
 import re
+import argparse
 from pathlib import Path
 
-rst = sys.argv[1]
-version = sys.argv[2]
-directory = sys.argv[3]
+VERSION_PLACEHOLDER = 'vV.V.V-VVV'
 
-if not (re.match(r"^v[0-9]+[.][0-9]+[.][0-9]+", version)):
+parser = argparse.ArgumentParser(description='Set or restore the version placeholder in kicad project files')
+parser.add_argument('mode', choices=['S', 'R'], help='S - set version instead of placeholder, R - restore placeholder')
+parser.add_argument('version', help='Version like v1.2.3[-suffix]')
+parser.add_argument('directory', help='Directory with *.kicad_* files')
+args = parser.parse_args()
+
+if not re.match(r"^v[0-9]+[.][0-9]+[.][0-9]+", args.version):
     print("Invalid version record format")
-    exit(1);
+    exit(1)
 
-files = Path(directory).glob("*.kicad_*")
-for filename in files:
-    tmpPath=os.path.join(filename)
-    with open(tmpPath, "r") as f:
-        print(f"Content of '{filename}'")
-        filedata = f.read()
-    if rst == 'S':
-        filedata = filedata.replace('vV.V.V-VVV', version)
+for filename in Path(args.directory).glob("*.kicad_*"):
+    print(f"Processing '{filename}'")
+    filedata = filename.read_text()
+    if args.mode == 'S':
+        filedata = filedata.replace(VERSION_PLACEHOLDER, args.version)
     else:
-        filedata = filedata.replace(version, 'vV.V.V-VVV')
-    with open(tmpPath, 'w') as f:
-        f.write(filedata)
+        filedata = filedata.replace(args.version, VERSION_PLACEHOLDER)
+    filename.write_text(filedata)

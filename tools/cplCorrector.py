@@ -53,12 +53,12 @@ def get_all_rows(filename):
         return [OrderedDict(zip(header, row)) for row in rows]
 
 
-def find_matches(serach_rows, row, field):
+def find_matches(search_rows, row, field):
     # find matches in the corrections rows
     res = []
-    for search_row in serach_rows:
+    for search_row in search_rows:
         if search_row[field]:
-            # escape re symbols escept human-re: ? and *
+            # escape re symbols except human-re: ? and *
             search_field = "".join([re.escape(item) if item not in ('?', '*') else item for item in search_row[field] ])
             # replace human-re symbols from csv to the python-re equivalents
             search_field = search_field.replace("*", ".+")
@@ -78,21 +78,18 @@ main_headers = get_headers(args.main_file)
 
 fixed_rows = []
 
-# logging.info("Start processsing")
 for number, row in enumerate(main_reader, start=1):
 
     row_by_package = find_matches(corrections, row, "package")
     row_by_designator = find_matches(corrections, row, "designator")
 
     if not any((row_by_package, row_by_designator)):
-        # logging.info(f'[{number}][{row["package"]}] - not found')
         fixed_rows.append(row)
         continue
 
-    if row_by_package != [] and row_by_designator != []:
+    if row_by_package and row_by_designator:
         logging.warning(f'[{row["designator"]}][{row["package"]}] - \033[33mFound intersection on `package` and `designator`!\033[0m')
 
-    # fix_row = next(row for row in (row_by_package, row_by_designator) if row)[0]
     row_package_designator = row_by_package + row_by_designator
     for fix_row in row_package_designator:
         fix_rowR = float(fix_row["rotation"]) if fix_row["rotation"] != '' else 0

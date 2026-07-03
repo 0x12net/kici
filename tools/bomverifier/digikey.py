@@ -4,7 +4,7 @@ from urllib.parse import quote
 
 import requests
 
-from bomverifier.api import ApiClient
+from bomverifier.api import ApiClient, get_proxies
 from bomverifier.exceptions import MissingDataException, ApiException
 from bomverifier.base import BaseProvider
 
@@ -17,22 +17,14 @@ from bomverifier.base import BaseProvider
 _PROD_HOST = 'https://api.digikey.com'
 _SANDBOX_HOST = 'https://sandbox-api.digikey.com'
 
-# Access token shared across BOM rows. ApiClient is rebuilt for every row, so the
-# token must live at module scope to avoid one auth request per row.
+# Access token shared across BOM rows. Provider instances are rebuilt for every
+# row, so the token must live at module scope to avoid one auth request per row.
 _token = {'value': None, 'expires_at': 0.0}
 
 
 def _base_host():
     sandbox = os.getenv('DIGIKEY_CLIENT_SANDBOX', 'False').strip().lower() in ('1', 'true', 'yes')
     return _SANDBOX_HOST if sandbox else _PROD_HOST
-
-
-def _proxies():
-    url = os.getenv('SOCKS5_URL')
-    if not url:
-        return None
-    proxy = f"socks5://{os.getenv('SOCKS5_USERNAME')}:{os.getenv('SOCKS5_PASSWORD')}@{url}"
-    return {'http': proxy, 'https': proxy}
 
 
 def _get_access_token():
@@ -54,7 +46,7 @@ def _get_access_token():
                 'client_secret': client_secret,
                 'grant_type': 'client_credentials',
             },
-            proxies=_proxies(),
+            proxies=get_proxies(),
             timeout=30,
         )
         resp.raise_for_status()
@@ -125,7 +117,7 @@ class DigiKey(BaseProvider):
             'User-Agent': os.getenv('USERAGENT', 'Mozilla/5.0'),
         }
         try:
-            resp = requests.request(method, url, headers=headers, proxies=_proxies(), timeout=30, **kwargs)
+            resp = requests.request(method, url, headers=headers, proxies=get_proxies(), timeout=30, **kwargs)
             resp.raise_for_status()
             return resp.json()
         except requests.RequestException as e:

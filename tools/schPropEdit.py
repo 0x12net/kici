@@ -19,13 +19,19 @@ parser.add_argument('--search_name', help="Property name to find")
 parser.add_argument('--search_value', help="Property value to find")
 parser.add_argument('--change_name', help="Property name to change")
 parser.add_argument('--change_value', help="Property value to change")
-parser.add_argument('--csv', help="CSV replacement table with columns: search_name,search_value,change_name,change_value")
+parser.add_argument('--csv', help="CSV replacement table with columns: search_name,search_value,change_name,change_value. "
+                                  "Combined with --search_name and --change_name it can be any CSV: "
+                                  "values are taken from these two columns row by row")
 args = parser.parse_args()
 
 single_args = [args.search_name, args.search_value, args.change_name, args.change_value]
 
-if args.csv and any(single_args):
-    logging.error("--csv cannot be combined with --search_name/--search_value/--change_name/--change_value")
+if args.csv and (args.search_value or args.change_value):
+    logging.error("--csv cannot be combined with --search_value/--change_value")
+    sys.exit(2)
+
+if args.csv and bool(args.search_name) != bool(args.change_name):
+    logging.error("--csv column mapping needs both --search_name and --change_name")
     sys.exit(2)
 
 if not args.csv and not all(single_args):
@@ -51,7 +57,30 @@ def load_replacements_from_csv(path):
     return replacements
 
 
-if args.csv:
+def load_replacements_from_columns(path, search_name, change_name):
+    "Read any CSV and build the replacement list from the given pair of columns"
+    replacements = []
+    with open(path, newline='', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        missing_columns = {search_name, change_name} - set(reader.fieldnames or [])
+        if missing_columns:
+            logging.error(f"CSV is missing columns: {', '.join(sorted(missing_columns))}")
+            sys.exit(2)
+        for row_number, row in enumerate(reader, start=2):
+            search_value = (row.get(search_name) or '').strip()
+            change_value = (row.get(change_name) or '').strip()
+            if not search_value or not change_value:
+                logging.warning(f"Skip csv row {row_number}: empty value")
+                continue
+            replacement = (search_name, search_value, change_name, change_value)
+            if replacement not in replacements:
+                replacements.append(replacement)
+    return replacements
+
+
+if args.csv and args.search_name:
+    replacements = load_replacements_from_columns(args.csv, args.search_name, args.change_name)
+elif args.csv:
     replacements = load_replacements_from_csv(args.csv)
 else:
     replacements = [tuple(single_args)]
@@ -71,17 +100,17 @@ class KicadChanger():
         changes = 0
         appends = 0
         for symbol in self.get_nodes_with_name(self.data, 'symbol'):
-            find_prop = False
-            for property in self.get_nodes(symbol[1:], 'property'):
-                if property[0].replace('"', '') == find_name and property[1].replace('"', '') == find_value:
-                    find_prop = property
+            find_prop = None
+            for prop in self.get_nodes(symbol[1:], 'property'):
+                if prop[0].replace('"', '') == find_name and prop[1].replace('"', '') == find_value:
+                    find_prop = prop
                     break
             else:
                 continue
-            # change or add prop in founded symbol
-            for node_number, property in self.get_nodes_with_name_and_nubmer(symbol[1:], 'property'):
-                if property[1].replace('"', '') == prop_name:
-                    property[2] = f'"{prop_value}"'
+            # change or add prop in the found symbol
+            for node_number, prop in self.get_nodes_with_number(symbol[1:], 'property'):
+                if prop[1].replace('"', '') == prop_name:
+                    prop[2] = f'"{prop_value}"'
                     changes += 1
                     break
             else:
@@ -89,22 +118,21 @@ class KicadChanger():
                 symbol.insert(node_number+2, ['property', f'"{prop_name}"', f'"{prop_value}"'] + find_prop[2:])
                 appends += 1
         logging.info(f'[{find_name}={find_value}] -> [{prop_name}={prop_value}] changed: {changes}, added: {appends}')
-                
 
     def get_nodes(self, data, node_name):
-        "Find node with name and return values"
+        "Find nodes with name and yield their values"
         for node in data:
             if node[0] == node_name:
                 yield node[1:]
 
     def get_nodes_with_name(self, data, node_name):
-        "Find node with name and return name and value"
+        "Find nodes with name and yield them whole"
         for node in data:
             if node[0] == node_name:
                 yield node
 
-    def get_nodes_with_name_and_nubmer(self, data, node_name):
-        "Find node with name and return name and value"
+    def get_nodes_with_number(self, data, node_name):
+        "Find nodes with name and yield (position, node) pairs"
         for number, node in enumerate(data):
             if node[0] == node_name:
                 yield (number, node)

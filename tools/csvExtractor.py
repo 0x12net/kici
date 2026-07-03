@@ -8,26 +8,21 @@ parser.add_argument('columns', help='Name of columns to be extracted ["qty,mpn,.
 parser.add_argument('-o', '--output', help='Output file name')
 args = parser.parse_args()
 
-input_file = args.input
 columns = args.columns.split(',')
 
 with open(args.input, 'r', encoding='utf-8') as input_file:
     reader = csv.DictReader(input_file)
-    result_data = []
-    for row in reader:
-        result_row = {}
-        for column in columns:
-            result_row[column] = row.get(column, '')
-        result_data.append(result_row)
+    rows = [[row.get(column, '') for column in columns] for row in reader]
 
-if args.output == None:
-    writer = csv.writer(sys.stdout, dialect=csv.unix_dialect)
-    writer.writerow([key for key in result_data[0].keys()])
-    for row in result_data:
-        writer.writerow(row.values())
+
+def write_rows(stream):
+    writer = csv.writer(stream, dialect=csv.unix_dialect)
+    writer.writerow(columns)
+    writer.writerows(rows)
+
+
+if args.output is None:
+    write_rows(sys.stdout)
 else:
     with open(args.output, 'w', newline='', encoding='utf-8') as output_file:
-        writer = csv.writer(output_file, dialect=csv.unix_dialect)
-        writer.writerow(result_data[0].keys())
-        for row in result_data:
-            writer.writerow(row.values())
+        write_rows(output_file)

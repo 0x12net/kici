@@ -43,29 +43,24 @@ class OptionsParser():
         }
 
     def _validate(self):
-        # print('Validating arguments')
         if not self.options.get('output'):
             print('CRITICAL: output path is a required argument')
             sys.exit(2)
-        if self.options.get('lcscRW') and self.options.get('lcsc'):
-            if self.options['lcscRW'] == self.options['lcsc']:
-                print('CRITICAL: lcsc and lcscRW must not match')
-                sys.exit(2)
-        if self.options.get('digikeyRW') and self.options.get('digikey'):
-            if self.options['digikeyRW'] == self.options['digikey']:
-                print('CRITICAL: digikey and digikeyRW must not match')
+        for name in self.PROVIDERS_LIST:
+            search = self.options.get(name)
+            rewrite = self.options.get(f'{name}RW')
+            if search and rewrite and search == rewrite:
+                print(f'CRITICAL: {name} and {name}RW must not match')
                 sys.exit(2)
         if self.options.get('qty') <= 0:
-            print('CRITICAL: qty < 0')
+            print('CRITICAL: qty must be > 0')
             sys.exit(2)
         if not os.path.isfile(self.options['input']):
             print(f"CRITICAL: file '{self.options['input']}' not found!")
             sys.exit(1)
-        # print('All good')
 
 
-
-def parse_argumetns():
+def parse_arguments():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('input', type=str, help='bom file')
@@ -92,15 +87,4 @@ def _provider_order(argv):
                 if name not in order:
                     order.append(name)
     return order
-
-
-
-
-
-
-
-
-
-
-
 

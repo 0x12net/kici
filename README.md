@@ -1,65 +1,116 @@
 # kici
 
-The repository contains the source code of the docker image. Designed to automate the development of electronic devices in kicad.
+**Ki**Cad **CI** — a docker image for automating the development of electronic devices in [KiCad](https://www.kicad.org/): production files, ERC/DRC checks and parts availability directly in the pipeline.
 
-I do not guarantee the functionality and backward compatibility of the pipeline. I support it for my processes.
+```
+ghcr.io/0x12net/kici:<tag>
+```
 
-## Features
+> [!WARNING]
+> I do not guarantee the functionality and backward compatibility of the pipeline. I support it for my processes.
 
-- `kicad-release` - System for generating production documentation
-  
-  - gerber + drill
-  
-  - bom + interactive bom
-  
-  - assembly drawing + board legend
-  
-  - schematic diagram
-  
-  - placement file with jlc corrections
+## What's inside
 
-- `kicad-rules-check` - Project consistency check
-  
-  - ERC
-  
-  - DRC
+Based on the official [`ghcr.io/kicad/kicad`](https://github.com/KiCad/kicad-cli-docker) image, with the addition of:
 
-- `kicad-stock` - Parts Availability Check System
-  
-  - lcsc
-  
-  - digikey
-  
-  - Automatic `mpn` detection function by `sku` lcsc
+- [InteractiveHtmlBom](https://github.com/openscopeproject/InteractiveHtmlBom)
+- `/scripts` — pipeline entry points (available in `PATH`)
+- `/tools` — python utilities used by the scripts, also usable standalone
 
-- ISSUE_TEMPLATE
+## Scripts
 
+Common environment variables:
 
-### Requirements:
+| Variable | Default | Description |
+|---|---|---|
+| `PRJ_VERSION` | `v0.0.0-def` | Board version, replaces the `vV.V.V-VVV` placeholder in project files |
+| `PRJ_REPO` | `repo` | Repository name, used in output file names |
+| `KIPRJ_DIR_ARRAY` | `hardware*` | Glob of directories with KiCad projects |
+| `KIPRJ_NAME` | `main` | KiCad project file name |
+| `OUTPUT_DIR` | `build` | Output directory |
 
-- There should be no spaces in directory and file names. [See](https://github.com/Artel-Inc/faq/blob/main/general_naming_guid.md)
+### kicadRelease.sh — production documentation
 
-- The `kicad` project must be named `main` (Can be changed via env pipeline). [See](https://github.com/Artel-Inc/faq/blob/main/hardware_repository_structure.md)
+```sh
+PRJ_VERSION=${GITHUB_REF_NAME} kicadRelease.sh -s -p -g -c -a -b -i -l
+```
 
-- One repository can store several PCBs. The directory should be called hardware, hardware-test....
+| Flag | Output |
+|---|---|
+| `-s` | Schematic diagram (pdf) |
+| `-p` | Board top/bottom views (pdf) |
+| `-d` | 3D model (step) |
+| `-g` | Gerber + drill, zipped (generic + rezonit variant) |
+| `-c` | Placement file (csv) with rotation/offset corrections |
+| `-a` | Assembly drawings (pdf) |
+| `-b` | BOM (csv) |
+| `-i` | Interactive HTML BOM |
+| `-l` | Board legend from `User.*` layers (pdf) |
 
-- The board version should be `vV.V.V-VVV`. [See](https://github.com/Artel-Inc/faq/blob/main/general_version_guid.md)
+Placement corrections (`-c`) are merged from two sources: a global table fetched from `CORRECTIONCPLURL` and a local `correction_cpl_local.csv` in the project directory. Both are applied by [cplCorrector.py](docs/system_requirements_cplСorrector.md).
 
-### Description of versioning
+### kicadRulesCheck.sh — project consistency check
 
-Notation: vA.B.C
+```sh
+kicadRulesCheck.sh -e   # ERC
+kicadRulesCheck.sh -d   # DRC (with schematic parity)
+```
 
-Where:
+Prints the violation report and exits non-zero if there are errors.
 
-- A - MAJOR version `kicad`
+### kicadStock.sh — parts availability check
 
-- B - MINOR version `kicad`
+Exports the BOM, queries distributors ([bomVerifier.py](docs/system_requirements_bomVerifier.md)) for stock, price and consistency, and prints a summary table.
 
-- C - Edition number `kici`
+Supported providers: `lcsc`, `digikey`.
 
-I recommend specifying the exact version of the docker image in the pipeline.
+| Variable | Default | Description |
+|---|---|---|
+| `BOMVERIFIERARG` | `-lcsc=sku -lcscRW=mpn` | Arguments passed to `bomVerifier.py`: `-<provider>=<field>` — search by field, `-<provider>RW=<field>` — rewrite field with found data, `-qty=N` — order quantity |
+| `PREVCOLUMN` | `qty,mpn,lcsc,...` | Columns of the summary table printed to the log (empty = disable) |
+| `SCHPROPEDIT_PAIRS` | derived | `search:change` property pairs written back into schematics; derived from the `-*RW=` flags of `BOMVERIFIERARG` unless set explicitly |
+| `DIGIKEY_CLIENT_ID` / `DIGIKEY_CLIENT_SECRET` | — | DigiKey API v4 credentials (2-legged OAuth, CI-friendly) |
+| `DIGIKEY_CLIENT_SANDBOX` | `False` | Use the DigiKey sandbox host |
+| `USERAGENT` / `USERAGENTURL` | — | User-Agent string, or a url to fetch it from |
+| `SOCKS5_URL` / `SOCKS5_USERNAME` / `SOCKS5_PASSWORD` | — | SOCKS5 proxy for API requests |
 
-## Changelog:
+When `BOMVERIFIERARG` contains rewrite flags (`-*RW=`), the found `mpn`/`sku` values are automatically written back into the schematic properties via [schPropEdit.py](docs/system_requirements_schPropEdit.md).
+
+## Tools
+
+| Tool | Purpose |
+|---|---|
+| [bomVerifier.py](docs/system_requirements_bomVerifier.md) | Enrich a BOM csv with distributor data (stock, price, consistency) |
+| [cplCorrector.py](docs/system_requirements_cplСorrector.md) | Apply rotation/offset corrections to a placement file |
+| [schPropEdit.py](docs/system_requirements_schPropEdit.md) | Batch edit of symbol properties in `.kicad_sch` files |
+| `csvExtractor.py` | Extract selected columns from a csv |
+| `prjVersion.py` | Set/restore the version placeholder in project files |
+
+## Requirements for the hardware repository
+
+- No spaces in directory and file names. [See](https://github.com/Artel-Inc/faq/blob/main/general_naming_guid.md)
+- The KiCad project must be named `main` (can be changed via `KIPRJ_NAME`). [See](https://github.com/Artel-Inc/faq/blob/main/hardware_repository_structure.md)
+- One repository can store several PCBs; directories should be called `hardware`, `hardware-test`, ...
+- The board version placeholder should be `vV.V.V-VVV`. [See](https://github.com/Artel-Inc/faq/blob/main/general_version_guid.md)
+
+## Versioning
+
+Notation: `vA.B.C`
+
+- `A` — MAJOR version of KiCad
+- `B` — MINOR version of KiCad
+- `C` — edition number of `kici`
+
+I recommend pinning the exact version of the docker image in the pipeline.
+
+## Changelog
+
+### v10.0.2
+
+- kicad-stock: automatic write-back of found `mpn`/`sku` into schematic properties (`SCHPROPEDIT_PAIRS`)
+- schPropEdit: batch replacement (`--csv`) and column-mapping modes
+- digikey: 2-legged OAuth (client credentials), price fallback below MOQ
+- refactoring: unified exceptions in bomverifier, `KIPRJ_NAME` support in gerber renaming
 
 ### v10.0.1
 
