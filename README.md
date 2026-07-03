@@ -126,22 +126,16 @@ I recommend pinning the exact version of the docker image in the pipeline.
 
 ## Changelog
 
-### v10.0.3
-
-- kicadRelease: `-d` (3D model/step) now downloads only the referenced 3D models on demand (`download3dModels.py`, `MODELS3D_REPOS`) instead of requiring a bundled 3D model library
-
-### v10.0.2
-
-- kicad-stock: automatic write-back of found `mpn`/`sku` into schematic properties (`SCHPROPEDIT_PAIRS`)
-- schPropEdit: batch replacement (`--csv`) and column-mapping modes
-- digikey: 2-legged OAuth (client credentials), price fallback below MOQ
-- refactoring: unified exceptions in bomverifier, `KIPRJ_NAME` support in gerber renaming
-
 ### v10.0.1
 
 - update kicad
 - add support digikey
 - del kicad-command
+- kicadRelease: `-d` (3D model/step) now downloads only the referenced 3D models on demand (`download3dModels.py`, `MODELS3D_REPOS`) instead of requiring a bundled 3D model library
+- kicad-stock: automatic write-back of found `mpn`/`sku` into schematic properties (`SCHPROPEDIT_PAIRS`)
+- schPropEdit: batch replacement (`--csv`) and column-mapping modes
+- digikey: 2-legged OAuth (client credentials), price fallback below MOQ
+- refactoring: unified exceptions in bomverifier, `KIPRJ_NAME` support in gerber renaming
 
 ### v9.0.2
 
