@@ -5,10 +5,12 @@
 #   -s sch pdf   -p pcb pdf   -d step      -g gerber+drill  -c cpl csv
 #   -a asm pdf   -b bom csv   -i interactive bom            -l legend pdf
 # Optional env: CORRECTIONCPLURL - url of a global cpl correction table (jlc)
+# Optional env: MODELS3D_REPOS - "VAR=URL" lines, one per 3D model repo (see -d)
 
 PRJ_VERSION=${PRJ_VERSION:-"v0.0.0-def"}
 PRJ_REPO=${PRJ_REPO:-"repo"}
 KIPRJ_DIR_ARRAY=${KIPRJ_DIR_ARRAY:-"hardware*"}
+MODELS3D_CACHE_DIR=${MODELS3D_CACHE_DIR:-"/tmp/3dmodels_cache"}
 
 KIPRJ_NAME=${KIPRJ_NAME:-"main"}
 OUTPUT_DIR=${OUTPUT_DIR:-"build"}
@@ -50,6 +52,12 @@ while getopts 'spdgcabil' OPTION; do
       d)
         ## 3D
         echo "------------------- 3D [STEP] ------------------- "
+        # download only the 3D models actually referenced by this board, from the repos
+        # listed in MODELS3D_REPOS, instead of bundling a full 3D model library in the image
+        if [ -n "$MODELS3D_REPOS" ]; then
+          eval "$(python3 /tools/download3dModels.py ${TARGET_DIR}/${KIPRJ_NAME}.kicad_pcb \
+                                                       --repos "$MODELS3D_REPOS" --cache-dir ${MODELS3D_CACHE_DIR})"
+        fi
         kicad-cli pcb export step  ${TARGET_DIR}/${KIPRJ_NAME}.kicad_pcb -o ${OUTPUT_DIR}/${NAME}.step \
         						   --grid-origin --no-dnp --subst-models --include-silkscreen --include-soldermask
         ;;

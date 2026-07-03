@@ -49,6 +49,26 @@ PRJ_VERSION=${GITHUB_REF_NAME} kicadRelease.sh -s -p -g -c -a -b -i -l
 
 Placement corrections (`-c`) are merged from two sources: a global table fetched from `CORRECTIONCPLURL` and a local `correction_cpl_local.csv` in the project directory. Both are applied by [cplCorrector.py](docs/system_requirements_cplСorrector.md).
 
+The 3D model (`-d`) is exported with `kicad-cli --subst-models`, which needs the footprints' 3D models available under the `${VAR}` variables referenced in the board file (e.g. `(model "${KICAD9_3DMODEL_DIR}/LED_THT.3dshapes/LED_D3.0mm.wrl" ...)`). The image does not bundle any 3D model library — `download3dModels.py` scans the board for the variables/paths it actually references and downloads only those files, from repos configured per variable in `MODELS3D_REPOS`:
+
+```yaml
+MODELS3D_REPOS: |
+  KICAD8_3DMODEL_DIR=https://gitlab.com/kicad/libraries/kicad-packages3D/-/raw/master
+  KICAD9_3DMODEL_DIR=https://gitlab.com/kicad/libraries/kicad-packages3D/-/raw/master
+  KICAD10_3DMODEL_DIR=https://gitlab.com/kicad/libraries/kicad-packages3D/-/raw/master
+  MYCOMPANY_3DMODELS=https://raw.githubusercontent.com/myorg/my-3d-models/main
+```
+
+Each line maps one `${VAR}` to the raw base URL of a repository/folder with the matching `*.3dshapes` layout — any number of repos, on any host that serves raw files (GitLab, GitHub, ...), can be listed. If `MODELS3D_REPOS` is unset, `-d` runs kicad-cli as-is (no download step). Models that fail to download (no repo configured for their variable, or not found at that path) are printed as warnings and simply left out of the export instead of failing the build.
+
+> [!NOTE]
+> The official KiCad 3D library has moved from `.wrl` to `.step` files. Projects whose footprints still reference an old `.wrl` path will get "not found" warnings for those parts even though `MODELS3D_REPOS` is configured correctly — re-link the footprint to the current library version (KiCad PCB editor: *Update Footprints from Library*) to fix the reference, rather than trying to work around it in the pipeline.
+
+| Variable | Default | Description |
+|---|---|---|
+| `MODELS3D_REPOS` | — | `VAR=URL` lines (one per repo) used to resolve 3D model variables for `-d` |
+| `MODELS3D_CACHE_DIR` | `/tmp/3dmodels_cache` | Local directory downloaded models are cached in |
+
 ### kicadRulesCheck.sh — project consistency check
 
 ```sh
@@ -85,6 +105,7 @@ When `BOMVERIFIERARG` contains rewrite flags (`-*RW=`), the found `mpn`/`sku` va
 | [schPropEdit.py](docs/system_requirements_schPropEdit.md) | Batch edit of symbol properties in `.kicad_sch` files |
 | `csvExtractor.py` | Extract selected columns from a csv |
 | `prjVersion.py` | Set/restore the version placeholder in project files |
+| `download3dModels.py` | Download only the 3D models a board references, from per-variable repos (see `-d`/`MODELS3D_REPOS`) |
 
 ## Requirements for the hardware repository
 
@@ -104,6 +125,10 @@ Notation: `vA.B.C`
 I recommend pinning the exact version of the docker image in the pipeline.
 
 ## Changelog
+
+### v10.0.3
+
+- kicadRelease: `-d` (3D model/step) now downloads only the referenced 3D models on demand (`download3dModels.py`, `MODELS3D_REPOS`) instead of requiring a bundled 3D model library
 
 ### v10.0.2
 
