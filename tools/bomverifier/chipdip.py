@@ -43,8 +43,7 @@ class ChipDip(BaseProvider):
         html = self._request()
         row = self._ROW_RE.search(html)
         if not row:
-            self.fill_with_empty_values()
-            return
+            raise MissingDataException
 
         sku = row.group(1)
         body = row.group(2)
@@ -63,7 +62,10 @@ class ChipDip(BaseProvider):
         self._rewrite(sku, mpn)
 
     def _request(self):
-        # No raise_for_status(): a genuine "nothing found" answers with HTTP 404 but a normal, parseable page.
+        # No blanket raise_for_status(): a genuine "nothing found" answers with
+        # HTTP 404 but a normal, parseable page. Any other non-2xx status
+        # (anti-bot block, 5xx, ...) is a real failure, not "not found" -- flag
+        # it as such instead of silently falling through to an empty result.
         headers = {'User-Agent': getenv('USERAGENT', DEFAULT_USER_AGENT)}
         try:
             response = requests.get(
@@ -72,6 +74,9 @@ class ChipDip(BaseProvider):
             )
         except requests.RequestException as e:
             print(f'\033[31mERROR\033[0m: API {e}')
+            raise ApiException
+        if response.status_code >= 400 and response.status_code != 404:
+            print(f'\033[31mERROR\033[0m: API unexpected status {response.status_code}')
             raise ApiException
         return response.text
 

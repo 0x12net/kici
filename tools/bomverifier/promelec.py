@@ -75,7 +75,11 @@ def _search(query):
         raise ApiException
 
     if not response.text:
-        return []
+        # A live "no results" answer is still valid JSON (e.g. {"items": []});
+        # a truly empty body means the session/endpoint is broken, not that
+        # nothing matched -- don't let it look like an ordinary miss.
+        print('\033[31mERROR\033[0m: API returned an empty response')
+        raise ApiException
     return json.loads(response.text).get('items') or []
 
 
@@ -106,8 +110,7 @@ class Promelec(BaseProvider):
     def update_with_data(self):
         items = _search(self.search_by)
         if not items:
-            self.fill_with_empty_values()
-            return
+            raise MissingDataException
 
         row = items[0]
         sku = str(row.get('id'))
@@ -115,8 +118,7 @@ class Promelec(BaseProvider):
 
         vendor = self._pick_vendor(row.get('PRICES') or [])
         if vendor is None:
-            self.fill_with_empty_values()
-            return
+            raise MissingDataException
 
         stock = vendor.get('QUANT', 0)
         price = self._get_price(vendor.get('PRICEBREAKS') or [])
