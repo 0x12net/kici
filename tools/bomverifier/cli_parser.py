@@ -4,7 +4,7 @@ import os
 
 
 class OptionsParser():
-    PROVIDERS_LIST = ['lcsc', 'digikey']
+    PROVIDERS_LIST = ['lcsc', 'digikey', 'chipdip', 'promelec']
 
     def __init__(self, options) -> None:
         self.options = options
@@ -69,6 +69,10 @@ def parse_arguments():
     parser.add_argument('-lcscRW', choices=['sku', 'mpn'], type=str, help='rewrite cells according to distributor data')
     parser.add_argument('-digikey', choices=['sku', 'mpn'], type=str, help='search data from distributor')
     parser.add_argument('-digikeyRW', choices=['sku', 'mpn'], type=str, help='rewrite cells according to distributor data')
+    parser.add_argument('-chipdip', choices=['sku', 'mpn'], type=str, help='search data from distributor')
+    parser.add_argument('-chipdipRW', choices=['sku', 'mpn'], type=str, help='rewrite cells according to distributor data')
+    parser.add_argument('-promelec', choices=['sku', 'mpn'], type=str, help='search data from distributor')
+    parser.add_argument('-promelecRW', choices=['sku', 'mpn'], type=str, help='rewrite cells according to distributor data')
     parser.add_argument('-qty', default=1, type=int, help='number of items in the order')
 
     args = parser.parse_args()

@@ -71,6 +71,14 @@ class DigiKey(BaseProvider):
 
         self.rewrite = kwargs.get('rewrite_field')
 
+    @classmethod
+    def check_auth(cls):
+        try:
+            _get_access_token()
+            return True
+        except ApiException:
+            return False
+
     @property
     def required_keys(self):
         return ['digikey_sku', 'digikey_mpn', 'digikey_stock', 'digikey_price', 'digikey_consistent', 'digikey_enough']

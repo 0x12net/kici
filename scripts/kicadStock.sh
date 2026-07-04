@@ -71,3 +71,13 @@ for KIPRJ_DIR in $KIPRJ_DIR_ARRAY; do
     done
   done
 done
+
+# summary across all boards processed above (one manufacturing batch): total
+# cost per provider and how many parts (by qty) that provider can't fully supply
+if compgen -G "${OUTPUT_DIR}/*_bom_stock.csv" > /dev/null; then
+  echo
+  echo "=== Batch summary: cost & missing parts per supplier ==="
+  python3 /tools/bomSummary.py ${OUTPUT_DIR}/*_bom_stock.csv \
+    | sed "s/\",\"/;/g" | sed 's/^"//' | sed 's/"$//' | LANG=C sed "s/[\x80-\xFF]/#/g" | column -t -s ";" -R 2,4 -o ' | ' \
+    | sed "s/True/✅  /g" | sed "s/False/❌   /g";
+fi

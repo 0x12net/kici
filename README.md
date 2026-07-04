@@ -80,7 +80,10 @@ Prints the violation report and exits non-zero if there are errors.
 
 Exports the BOM, queries distributors (`bomVerifier.py`) for stock, price and consistency, and prints a summary table.
 
-Supported providers: `lcsc`, `digikey`.
+Supported providers: `lcsc`, `digikey`, `chipdip`, `promelec`. `chipdip` and `promelec` have
+no official partner API for third-party sku/price lookup, so they scrape/drive undocumented
+endpoints instead (`chipdip.py`/`promelec.py`) — expect unversioned responses, anti-bot, and,
+for `promelec`, a required PROM2PROM (`office.promelec.ru`) partner account.
 
 | Variable | Default | Description |
 |---|---|---|
@@ -89,6 +92,8 @@ Supported providers: `lcsc`, `digikey`.
 | `SCHPROPEDIT_PAIRS` | derived | `search:change` property pairs written back into schematics; derived from the `-*RW=` flags of `BOMVERIFIERARG` unless set explicitly |
 | `DIGIKEY_CLIENT_ID` / `DIGIKEY_CLIENT_SECRET` | — | DigiKey API v4 credentials (2-legged OAuth, CI-friendly) |
 | `DIGIKEY_CLIENT_SANDBOX` | `False` | Use the DigiKey sandbox host |
+| `PROMELEC_LOGIN` / `PROMELEC_PASSWORD` | — | PROM2PROM (`office.promelec.ru`) partner account credentials, required by the `promelec` provider |
+| `RUB_USD_RATE` | fetched from `cbr.ru` | Override the RUB→USD rate used to convert `chipdip`/`promelec` prices (both quote in RUB, all `*_price` columns are USD) |
 | `USERAGENT` / `USERAGENTURL` | — | User-Agent string, or a url to fetch it from |
 | `SOCKS5_URL` / `SOCKS5_USERNAME` / `SOCKS5_PASSWORD` | — | SOCKS5 proxy for API requests |
 
@@ -127,7 +132,7 @@ I recommend pinning the exact version of the docker image in the pipeline.
 ### v10.0.1
 
 - update kicad
-- add support digikey
+- add support digikey, chipdip, promelec
 - del kicad-command
 - refactoring
 

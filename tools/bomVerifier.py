@@ -1,10 +1,14 @@
 from bomverifier.api import ApiClient
 from bomverifier.cli_parser import parse_arguments, OptionsParser
-from bomverifier.csv_parser import read_csv_rows, update_row_with_providers, write_rows
+from bomverifier.csv_parser import read_csv_rows, update_row_with_providers, write_rows, verify_providers_auth
 from bomverifier.exceptions import MissingDataException
 
 arguments = parse_arguments()
 run_options = OptionsParser(arguments).get_run_options()
+
+# Check credentials once, up front, so a provider with no working credentials
+# is skipped for the whole run instead of failing auth on every BOM row.
+run_options['providers'] = verify_providers_auth(run_options['providers'])
 
 api_client = ApiClient()
 updated_rows = []

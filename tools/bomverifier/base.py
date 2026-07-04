@@ -10,6 +10,17 @@ class BaseProvider(ABC):
     # BOM column holding this provider's part number (sku). Overridden in subclasses.
     sku_column = None
 
+    @classmethod
+    def check_auth(cls):
+        """Verify credentials/session once before the row loop starts.
+
+        Called once per run, not per row, so a provider with missing/invalid
+        credentials can be skipped for every row instead of retrying (and
+        failing) its login/token request hundreds of times. Providers that
+        need no authorization keep this default (always ready).
+        """
+        return True
+
     @property
     @abstractmethod
     def required_keys(self):

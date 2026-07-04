@@ -3,14 +3,34 @@ from collections import OrderedDict
 
 from bomverifier.lcsc import LCSC
 from bomverifier.digikey import DigiKey
+from bomverifier.chipdip import ChipDip
+from bomverifier.promelec import Promelec
 from bomverifier.api import ApiClient
 from bomverifier.exceptions import MissingDataException, ArgsException, ApiException
 
 
 PROVIDER_CLASSES = {
     'lcsc': LCSC,
-    'digikey': DigiKey
+    'digikey': DigiKey,
+    'chipdip': ChipDip,
+    'promelec': Promelec
 }
+
+
+def verify_providers_auth(providers):
+    """Check each provider's credentials once, before any BOM row is processed.
+
+    A provider with missing/invalid credentials gets marked unauthorized here
+    instead of being retried (and failing) on every row: digikey/promelec only
+    cache their token/session on success, so without this upfront check a bad
+    credential means one failed auth request per BOM row.
+    """
+    for provider in providers:
+        provider_class = PROVIDER_CLASSES[provider['name']]
+        provider['authorized'] = provider_class.check_auth()
+        if not provider['authorized']:
+            print(f'\033[31mERROR\033[0m: [{provider["name"]}] Authorization failed, skipping this provider for the whole run')
+    return providers
 
 
 def read_csv_rows(filename):
@@ -33,10 +53,16 @@ def update_row_with_providers(row, qty, providers, row_number, api_client):
     row['qty_total'] = qty_total
 
     for provider in providers:
-        print(f'INFO: ({row_number}) [{provider["name"]}]\tmpn:{row["mpn"]}\t\tcomment:{row["comment"]}')
         provider_class = PROVIDER_CLASSES.get(provider['name'])
+        row_provider = provider_class(api_client, row, qty_total, search_type=provider['search_type'], **provider['options'])
+
+        if not provider.get('authorized', True):
+            # Auth already failed in verify_providers_auth: no request for this
+            # provider, just keep the CSV columns present (blank) for this row.
+            row_provider.fill_with_empty_values()
+            continue
+
         try:
-            row_provider = provider_class(api_client, row, qty_total, search_type=provider['search_type'], **provider['options'])
             row_provider.validate()
             row_provider.update_with_data()
         except MissingDataException:
