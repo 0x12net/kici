@@ -31,8 +31,7 @@ def _get_session():
     login = getenv('PROMELEC_LOGIN')
     password = getenv('PROMELEC_PASSWORD')
     if not login or not password:
-        print('\033[31mERROR\033[0m: PROMELEC_LOGIN / PROMELEC_PASSWORD are not set')
-        raise ApiException
+        raise ApiException('PROMELEC_LOGIN / PROMELEC_PASSWORD are not set')
 
     session = requests.Session()
     session.headers.update({'User-Agent': getenv('USERAGENT', DEFAULT_USER_AGENT)})
@@ -48,12 +47,10 @@ def _get_session():
         }, timeout=30)
         response.raise_for_status()
     except requests.RequestException as e:
-        print(f'\033[31mERROR\033[0m: promelec auth {e}')
-        raise ApiException
+        raise ApiException(f'promelec auth {e}') from e
 
     if 'login_reg' in response.text:
-        print('\033[31mERROR\033[0m: promelec auth failed (invalid PROMELEC_LOGIN/PROMELEC_PASSWORD?)')
-        raise ApiException
+        raise ApiException('promelec auth failed (invalid PROMELEC_LOGIN/PROMELEC_PASSWORD?)')
 
     _session['value'] = session
     return session
@@ -71,15 +68,13 @@ def _search(query):
         }, timeout=30)
         response.raise_for_status()
     except requests.RequestException as e:
-        print(f'\033[31mERROR\033[0m: API {e}')
-        raise ApiException
+        raise ApiException(str(e)) from e
 
     if not response.text:
         # A live "no results" answer is still valid JSON (e.g. {"items": []});
         # a truly empty body means the session/endpoint is broken, not that
         # nothing matched -- don't let it look like an ordinary miss.
-        print('\033[31mERROR\033[0m: API returned an empty response')
-        raise ApiException
+        raise ApiException('API returned an empty response')
     return json.loads(response.text).get('items') or []
 
 
@@ -94,11 +89,8 @@ class Promelec(BaseProvider):
 
     @classmethod
     def check_auth(cls):
-        try:
-            _get_session()
-            return True
-        except ApiException:
-            return False
+        _get_session()
+        return True
 
     @property
     def required_keys(self):

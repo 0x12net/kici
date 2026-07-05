@@ -35,8 +35,7 @@ def _get_access_token():
     client_id = os.getenv('DIGIKEY_CLIENT_ID')
     client_secret = os.getenv('DIGIKEY_CLIENT_SECRET')
     if not client_id or not client_secret:
-        print('\033[31mERROR\033[0m: DIGIKEY_CLIENT_ID / DIGIKEY_CLIENT_SECRET are not set')
-        raise ApiException
+        raise ApiException('DIGIKEY_CLIENT_ID / DIGIKEY_CLIENT_SECRET are not set')
 
     try:
         resp = requests.post(
@@ -52,8 +51,7 @@ def _get_access_token():
         resp.raise_for_status()
         data = resp.json()
     except requests.RequestException as e:
-        print(f'\033[31mERROR\033[0m: DigiKey auth {e}')
-        raise ApiException
+        raise ApiException(f'DigiKey auth {e}') from e
 
     _token['value'] = data['access_token']
     # Refresh slightly early so a nearly expired token is never used mid-run.
@@ -73,11 +71,8 @@ class DigiKey(BaseProvider):
 
     @classmethod
     def check_auth(cls):
-        try:
-            _get_access_token()
-            return True
-        except ApiException:
-            return False
+        _get_access_token()
+        return True
 
     @property
     def required_keys(self):
@@ -129,8 +124,7 @@ class DigiKey(BaseProvider):
             resp.raise_for_status()
             return resp.json()
         except requests.RequestException as e:
-            print(f'\033[31mERROR\033[0m: API {e}')
-            raise ApiException
+            raise ApiException(str(e)) from e
 
     def _pick_variation(self, variations):
         """A product exposes one variation per packaging option, each with its own

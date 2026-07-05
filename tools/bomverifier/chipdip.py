@@ -73,11 +73,9 @@ class ChipDip(BaseProvider):
                 headers=headers, proxies=get_proxies(), timeout=30,
             )
         except requests.RequestException as e:
-            print(f'\033[31mERROR\033[0m: API {e}')
-            raise ApiException
+            raise ApiException(str(e)) from e
         if response.status_code >= 400 and response.status_code != 404:
-            print(f'\033[31mERROR\033[0m: API unexpected status {response.status_code}')
-            raise ApiException
+            raise ApiException(f'unexpected status {response.status_code}')
         return response.text
 
     def _fetch_mpn(self, body):

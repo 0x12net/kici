@@ -37,8 +37,7 @@ def _get_rate():
         nominal = float(valute.findtext('Nominal').replace(',', '.'))
         value = float(valute.findtext('Value').replace(',', '.'))
     except (requests.RequestException, ET.ParseError, AttributeError, TypeError) as e:
-        print(f'\033[31mERROR\033[0m: CBR rate {e}')
-        raise ApiException
+        raise ApiException(f'CBR rate {e}') from e
 
     _rate['value'] = value / nominal
     return _rate['value']

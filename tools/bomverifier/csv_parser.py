@@ -27,9 +27,12 @@ def verify_providers_auth(providers):
     """
     for provider in providers:
         provider_class = PROVIDER_CLASSES[provider['name']]
-        provider['authorized'] = provider_class.check_auth()
-        if not provider['authorized']:
-            print(f'\033[31mERROR\033[0m: [{provider["name"]}] Authorization failed, skipping this provider for the whole run')
+        try:
+            provider_class.check_auth()
+            provider['authorized'] = True
+        except ApiException as e:
+            provider['authorized'] = False
+            print(f'\033[31mERROR\033[0m: [{provider["name"]}]\tAuthorization failed: {e} -- skipping this provider for the whole run')
     return providers
 
 
@@ -55,6 +58,9 @@ def update_row_with_providers(row, qty, providers, row_number, api_client):
     for provider in providers:
         provider_class = PROVIDER_CLASSES.get(provider['name'])
         row_provider = provider_class(api_client, row, qty_total, search_type=provider['search_type'], **provider['options'])
+        # search_type ('mpn'/'sku') is set in __init__ regardless of how far
+        # processing gets, so it's always safe to use in the log label below.
+        label = f'{provider["name"]}:{row_provider.search_type}'
 
         if not provider.get('authorized', True):
             # Auth already failed in verify_providers_auth: no request for this
@@ -66,13 +72,13 @@ def update_row_with_providers(row, qty, providers, row_number, api_client):
             row_provider.validate()
             row_provider.update_with_data()
         except MissingDataException:
-            print(f'\033[33mWARN\033[0m: ({row_number}) [{provider["name"]}]\tComponent not found')
+            print(f'\033[33mWARN\033[0m: ({row_number}) [{label}]\tComponent not found')
             row_provider.fill_with_empty_values()
         except ArgsException as e:
-            print(f'\033[31mERROR\033[0m: ({row_number}) [{provider["name"]}]\tInvalid argument: {e}')
+            print(f'\033[31mERROR\033[0m: ({row_number}) [{label}]\tInvalid argument: {e}')
         except ApiException as e:
             row_provider.fill_with_empty_values()
-            print(f'\033[31mERROR\033[0m: ({row_number}) [{provider["name"]}]\tAPI is broken: {e}')
+            print(f'\033[31mERROR\033[0m: ({row_number}) [{label}]\tAPI error: {e}')
 
 
 def write_rows(output_file, rows):

@@ -25,12 +25,13 @@ class ApiClient():
         self.proxies = get_proxies()
 
     def send_request(self, url, params):
+        last_error = None
         for _ in range(3):
             try:
                 response = requests.get(url, params=params, headers=self.headers, proxies=self.proxies)
                 response.raise_for_status()
                 return json.loads(response.text)
             except requests.RequestException as e:
-                print(f'\033[31mERROR\033[0m: API {e}')
+                last_error = e
                 time.sleep(3)
-        raise ApiException
+        raise ApiException(str(last_error)) from last_error
