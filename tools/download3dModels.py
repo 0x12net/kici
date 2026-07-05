@@ -15,15 +15,24 @@ def log(message):
 
 
 MODEL_RE = re.compile(r'\(model\s+"\$\{(\w+)\}/([^"]+)"')
+# Legacy 3D-path-alias syntax, e.g. (model ":MAS_3DMODEL_DIR:file.step" ...). The alias
+# lives in the local KiCad config rather than an env var, so kicad-cli can't resolve it
+# in CI - normalize_legacy_syntax() rewrites it to the portable ${VAR}/path form below.
+LEGACY_MODEL_RE = re.compile(r'\(model\s+"\:(\w+):([^"]+)"')
 
 
-def find_models(pcb_file):
-    """Yield unique (var, relative_path) pairs from (model "${VAR}/...") references."""
+def find_models(text):
+    """Yield unique (var, relative_path) pairs from every (model ...) reference, new or legacy syntax."""
     seen = set()
-    for var, rel_path in MODEL_RE.findall(Path(pcb_file).read_text()):
+    for var, rel_path in MODEL_RE.findall(text) + LEGACY_MODEL_RE.findall(text):
         if (var, rel_path) not in seen:
             seen.add((var, rel_path))
             yield var, rel_path
+
+
+def normalize_legacy_syntax(text):
+    """Rewrite legacy `:VAR:path` 3D model refs to the portable `${VAR}/path` form."""
+    return LEGACY_MODEL_RE.sub(r'(model "${\1}/\2"', text)
 
 
 def parse_repos(spec):
@@ -59,7 +68,8 @@ def main():
     parser = argparse.ArgumentParser(
         description='Download only the 3D models referenced by a kicad_pcb file, '
                     'from per-variable repos, instead of bundling the whole library')
-    parser.add_argument('pcb_file', help='*.kicad_pcb file to scan for (model "${VAR}/...") references')
+    parser.add_argument('pcb_file', help='*.kicad_pcb file to scan for (model "${VAR}/...") '
+                                          'or legacy (model ":VAR:...") references')
     parser.add_argument('-r', '--repos', required=True,
                          help='VAR=URL pairs, one per line; URL is the raw base of the folder tree '
                               'matching ${VAR} (e.g. KICAD9_3DMODEL_DIR=https://gitlab.com/kicad/'
@@ -72,8 +82,11 @@ def main():
     cache_dir = Path(args.cache_dir)
     proxies = get_proxies()
 
+    pcb_path = Path(args.pcb_file)
+    pcb_text = pcb_path.read_text()
+
     used_vars, missing = set(), []
-    for var, rel_path in find_models(args.pcb_file):
+    for var, rel_path in find_models(pcb_text):
         used_vars.add(var)
         base_url = repos.get(var)
         if base_url is None:
@@ -91,6 +104,11 @@ def main():
             f'(kicad-cli --subst-models will substitute or skip them):')
         for var, rel_path, reason in missing:
             log(f'  - ${{{var}}}/{rel_path} ({reason})')
+
+    normalized_text = normalize_legacy_syntax(pcb_text)
+    if normalized_text != pcb_text:
+        pcb_path.write_text(normalized_text)
+        log(f'INFO: normalized legacy 3D model path syntax (:VAR:path -> ${{VAR}}/path) in {pcb_path}')
 
     for var in sorted(used_vars):
         if var in repos:
