@@ -4,7 +4,7 @@
 # Usage: PRJ_VERSION=v0.0.0 PRJ_REPO=test ./kicadRelease.sh -s -p -g -c -a -b -i -l
 #   -s sch pdf   -p pcb pdf   -d step      -g gerber+drill  -c cpl csv
 #   -a asm pdf   -b bom csv   -i interactive bom            -l legend pdf
-# Optional env: CORRECTIONCPLURL - url of a global cpl correction table (jlc)
+# Optional env: CORRECTIONCPLURL - url or local file path of a global cpl correction table (jlc)
 # Optional env: MODELS3D_REPOS - "VAR=URL" lines, one per 3D model repo (see -d)
 
 PRJ_VERSION=${PRJ_VERSION:-"v0.0.0-def"}
@@ -19,7 +19,10 @@ mkdir -p $OUTPUT_DIR
 OUTPUT_DIR=`realpath $OUTPUT_DIR`
 
 if [ -n "$CORRECTIONCPLURL" ]; then
-  wget -O ${OUTPUT_DIR}/correction_cpl_jlc.csv "$CORRECTIONCPLURL"
+  case "$CORRECTIONCPLURL" in
+    http://*|https://*) wget -O ${OUTPUT_DIR}/correction_cpl_jlc.csv "$CORRECTIONCPLURL" ;;
+    *) cp "$CORRECTIONCPLURL" ${OUTPUT_DIR}/correction_cpl_jlc.csv ;;
+  esac
   awk 'NR==1 {print $1}' ${OUTPUT_DIR}/correction_cpl_jlc.csv | grep -q "Designator" && echo "INFO: File 'correction_cpl_jlc.csv' consistent" || (echo "ERROR: File 'correction_cpl_jlc.csv' is broken"; rm ${OUTPUT_DIR}/correction_cpl_jlc.csv;)
 fi
   

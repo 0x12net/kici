@@ -47,7 +47,7 @@ PRJ_VERSION=${GITHUB_REF_NAME} kicadRelease.sh -s -p -g -c -a -b -i -l
 | `-i` | Interactive HTML BOM |
 | `-l` | Board legend from `User.*` layers (pdf) |
 
-Placement corrections (`-c`) are merged from two sources: a global table fetched from `CORRECTIONCPLURL` and a local `correction_cpl_local.csv` in the project directory. Both are applied by `cplCorrector.py`.
+Placement corrections (`-c`) are merged from two sources: a global table fetched from `CORRECTIONCPLURL` (`http(s)://` url or local file path) and a local `correction_cpl_local.csv` in the project directory. Both are applied by `cplCorrector.py`.
 
 The 3D model (`-d`) is exported with `kicad-cli --subst-models`, which needs the footprints' 3D models available under the `${VAR}` variables referenced in the board file (e.g. `(model "${KICAD9_3DMODEL_DIR}/LED_THT.3dshapes/LED_D3.0mm.wrl" ...)`). The image does not bundle any 3D model library — `download3dModels.py` scans the board for the variables/paths it actually references and downloads only those files, from repos configured per variable in `MODELS3D_REPOS`:
 
@@ -75,6 +75,15 @@ kicadRulesCheck.sh -d   # DRC (with schematic parity)
 ```
 
 Prints the violation report and exits non-zero if there are errors.
+
+### kicadRiskCheck.sh — parts risk check
+
+Exports the BOM and checks every non-empty BOM column of every part (chip name, mpn, distributor sku, or any other field) against a risk classification table (columns: `risk_level,part,description`; `part` accepts `*`/`?` wildcards, matched case-insensitively). Prints a report and exits non-zero if the highest risk level found reaches `RISK_FAIL_LEVEL`; lower levels are reported but the build still passes.
+
+| Variable | Default | Description |
+|---|---|---|
+| `RISKCLASSIFICATIONURL` | — (required) | `http(s)://` url or local file path of the risk classification csv, e.g. hosted in [metadata](https://github.com/0x12net/metadata) (a local path is handy for testing an uncommitted table -- see `METADATA_DIR` in the [Makefile](Makefile)) |
+| `RISK_FAIL_LEVEL` | `3` | Risk level (`1`/`2`/`3`) at which the pipeline fails |
 
 ### kicadStock.sh — parts availability check
 
@@ -104,6 +113,7 @@ When `BOMVERIFIERARG` contains rewrite flags (`-*RW=`), the found `mpn`/`sku` va
 | Tool | Purpose |
 |---|---|
 | `bomVerifier.py` | Enrich a BOM csv with distributor data (stock, price, consistency) |
+| `riskChecker.py` | Check BOM parts (chip name / mpn / sku) against a risk classification table |
 | `cplCorrector.py` | Apply rotation/offset corrections to a placement file |
 | `schPropEdit.py` | Batch edit of symbol properties in `.kicad_sch` files |
 | `csvExtractor.py` | Extract selected columns from a csv |
@@ -128,6 +138,11 @@ Notation: `vA.B.C`
 I recommend pinning the exact version of the docker image in the pipeline.
 
 ## Changelog
+
+### v10.0.2
+
+- add kicadRiskCheck.sh / riskChecker.py (parts risk classification check)
+- CORRECTIONCPLURL/RISKCLASSIFICATIONURL now also accept a local file path (not just http(s))
 
 ### v10.0.1
 
