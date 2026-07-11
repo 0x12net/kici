@@ -14,6 +14,7 @@ ghcr.io/0x12net/kici:<tag>
 Based on the official [`ghcr.io/kicad/kicad`](https://github.com/KiCad/kicad-cli-docker) image, with the addition of:
 
 - [InteractiveHtmlBom](https://github.com/openscopeproject/InteractiveHtmlBom)
+- [kdif](https://github.com/0x12net/kdif) — interactive HTML diff of a board/schematic between git revisions
 - `/scripts` — pipeline entry points (available in `PATH`)
 - `/tools` — python utilities used by the scripts, also usable standalone
 
@@ -138,6 +139,10 @@ Notation: `vA.B.C`
 I recommend pinning the exact version of the docker image in the pipeline.
 
 ## Changelog
+
+### v10.0.3
+
+- add kdif (interactive HTML diff of a board/schematic between git revisions)
 
 ### v10.0.2
 
